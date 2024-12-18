@@ -3,3 +3,10 @@
 .ds_store
 /venv
 **/__pycache__
+data-markup.ipynb
+data-markup.ipynb
+demo_lstm.ipynb
+full_pipeline.ipynb
+motorica-gestures.ipynb
+pipeline_model_full_learn&tune.ipynb
+real time prediction.ipynb
