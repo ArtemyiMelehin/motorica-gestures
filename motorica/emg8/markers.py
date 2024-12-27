@@ -371,13 +371,46 @@ class TransMarker(BasePeakMarker):
             # самый глубокий пик между вторым высоким пиком и концом эпохи :)
             two_deepest[1] = np.argmin(peaks_neg[two_highest[1]: r]) + two_highest[1]
 
-            # Переход к жесту – метка класса жеста,
-            X.loc[two_highest[0]: two_deepest[0], self.target_col_name] = labels[i]
+            # Переход к жесту – метка класса жеста + 10,
+            X.loc[two_highest[0]: two_deepest[0], self.target_col_name] = labels[i] + 10
 
-            X.loc[two_deepest[0] + 1: two_highest[1] - 1, self.target_col_name] = labels[i] + 10
+            X.loc[two_deepest[0] + 1: two_highest[1] - 1, self.target_col_name] = labels[i]
 
-            # а переход от жеста к нейтрали – та же метка, но со знаком минус
-            X.loc[two_highest[1]: two_deepest[1], self.target_col_name] = - labels[i] 
-  
+            # а переход от жеста к нейтрали – метка, но со знаком минус
+            X.loc[two_highest[1]: two_deepest[1], self.target_col_name] = - labels[i]
+
+        return X
+    
+
+class BaseMarker(BasePeakMarker):
+    
+    def _mark(
+        self,
+        X: pd.DataFrame
+    ) -> np.ndarray[int]:
+        
+        if self.use_peaks == 'grad':
+            peaks = self.peaks_grad2
+            peaks_neg = self.peaks_grad2_neg
+        else: # self.use_peaks == 'std'
+            peaks = self.peaks_std1
+            peaks_neg = self.peaks_std1_neg
+       
+        # Искать границы будем внутри отрезков, 
+        # определяемых по признаку синхронизации
+        sync_mask = X[self.sync_col] != X[self.sync_col].shift(-1)
+        sync_index = np.append([X.index[0]], X[sync_mask].index)
+
+        labels = [int(X.loc[idx + 1, self.cmd_col]) for idx in sync_index[1:-1:2]]
+
+        X[self.target_col_name] = self.states[NOGO_STATE]
+
+        # Начинаем цикл поиска с индекса синхронизации 1, пропуская начальный nogo
+        for i, lr in enumerate(zip(sync_index[1::2], sync_index[3::2])):
+            l, r = lr
+            # Находим 2 самых высоких пика за эпоху
+            two_highest = np.sort(np.argpartition(peaks[l: r], -2)[-2:]) + l
+            
+            X.loc[two_highest[0]: two_highest[1] - 1, self.target_col_name] = labels[i]
 
         return X
